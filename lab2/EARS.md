@@ -27,7 +27,3 @@ REQ-007 (Event-driven): WHEN створюється нова Group для Course
 REQ-008 (State-driven): WHILE Group.end_date вже минула, система SHALL
 забороняти зміну mark та final_score для пов'язаних Enrollment
 (дані курсу "заморожені").
-
-REQ-009 (Optional): WHERE оплата для Group є платною, система SHALL
-ініціювати запит до Платіжного шлюзу одразу після створення Enrollment
-і тримати статус запису як "pending" до підтвердження.
