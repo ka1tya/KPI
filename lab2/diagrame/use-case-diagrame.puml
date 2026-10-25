@@ -2,39 +2,31 @@
 left to right direction
 skinparam packageStyle rectangle
 
+actor "Користувач платформи" as User
 actor "Студент" as Student
 actor "Викладач" as Teacher
 actor "Адміністратор" as Admin
-actor "Служба email-сповіщень" as Mail <<external system>>
 
-Admin --|> Teacher
+Student --|> User
+Teacher --|> User
+Admin --|> User
 
 rectangle "Платформа курсів" {
-  usecase "UC-1 Записатися на групу" as UC1
-  usecase "UC-2 Перевірити доступність групи" as UC2
+  usecase "UC-1 Зарахувати студентів до групи" as UC1
   usecase "UC-3 Переглянути курси" as UC3
   usecase "UC-4 Фільтрувати за категорією" as UC4
   usecase "UC-5 Виставити або виправити бали" as UC5
-  usecase "UC-6 Перевірити, що група не завершена" as UC6
-  usecase "UC-7 Обчислити final_score і право на сертифікат" as UC7
-  usecase "UC-8 Надіслати сповіщення про сертифікат" as UC8
+  usecase "UC-6 Переглянути поточні результати студента" as UC6
   usecase "UC-9 Створити групу" as UC9
-  usecase "UC-10 Перевірити дати групи" as UC10
-  usecase "UC-11 Сповістити про початок і завершення групи" as UC11
 }
 
-Student --> UC1
-Student --> UC3
+Admin --> UC1
+User --> UC3
 Teacher --> UC5
+Teacher --> UC6
+Admin --> UC6
 Admin --> UC9
 
-UC1 .> UC2 : <<include>>
 UC4 .> UC3 : <<extend>>
 UC5 .> UC6 : <<include>>
-UC5 .> UC7 : <<include>>
-UC8 .> UC7 : <<extend>>
-UC9 .> UC10 : <<include>>
-
-UC8 --> Mail
-UC11 --> Mail
 @enduml

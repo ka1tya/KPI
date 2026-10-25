@@ -1,80 +1,66 @@
-Feature: Сценарії онлайн-платформи курсів з програмування
+Feature: Виставлення та виправлення балів студенту (згідно UC-5)
+  
+  User story: Як викладач, я хочу виставляти та виправляти бали студентів, щоб система автоматично обчислювала підсумковий відсоток і визначала, чи має студент право на сертифікат.
 
-  Scenario: Успішний запис до старту групи
-    Given Groups.start_date ще не настала
-    And студент ще не має запису для цієї групи
-    When студент подає заявку на участь у групі
-    Then створюється запис у Enrollments з mark = NULL, final_score = NULL, certificate_issued = false
+  Background:
+    Given викладач відкрив поточні результати студента
+    And система відобразила наявні дані оцінювання або повідомила, що бал ще не встановлено
 
-  Scenario: Спроба запису в день старту групи
-    Given поточна дата дорівнює Groups.start_date
-    When студент подає заявку на участь у групі
-    Then система відхиляє заявку з кодом "GROUP_CLOSED"
-
-  Scenario: Спроба запису після старту групи
-    Given Groups.start_date вже минула
-    When студент подає заявку на участь у групі
-    Then система відхиляє заявку з кодом "GROUP_CLOSED"
-
-  Scenario: Автоматична видача сертифіката
-    Given студент має запис у Enrollments з mark = 50 і certificate_issued = false
+  Scenario: Успішне виставлення бала вище порогу сертифіката
+    Given у записі Enrollments mark = NULL
+    And certificate_issued = false
+    And поточна дата не пізніша за Groups.end_date
     When викладач змінює mark на 75
-    Then final_score обчислюється як 75%
-    And certificate_issued встановлюється в true
-    And студент отримує email-сповіщення протягом 10 хвилин
+    Then система зберігає mark = 75
+    And система обчислює final_score як 75%
+    And система встановлює certificate_issued = true
 
-  Scenario: Рівно на порозі сертифіката
-    Given студент має запис у Enrollments з mark = NULL і certificate_issued = false
+  Scenario: Виставлення бала рівно на порозі сертифіката
+    Given у записі Enrollments mark = NULL
+    And certificate_issued = false
+    And поточна дата не пізніша за Groups.end_date
     When викладач змінює mark на 60
-    Then final_score обчислюється як 60%
-    And certificate_issued встановлюється в true
+    Then система зберігає mark = 60
+    And система обчислює final_score як 60%
+    And система встановлює certificate_issued = true
 
-  Scenario: Недостатній бал для сертифіката
-    Given студент має запис у Enrollments без виставленого final_score
-    When викладач виставляє final_score = 45%
-    Then certificate_issued залишається false
+  Scenario: Виставлення бала нижче порогу сертифіката
+    Given у записі Enrollments mark = NULL
+    And certificate_issued = false
+    And поточна дата не пізніша за Groups.end_date
+    When викладач змінює mark на 45
+    Then система зберігає mark = 45
+    And система обчислює final_score як 45%
+    And система залишає certificate_issued = false
 
-  Scenario: Виправлення балів знімає сертифікат
-    Given студент має запис у Enrollments з mark = 70 і certificate_issued = true
+  Scenario: Виправлення бала змінює статус сертифіката
+    Given студент має запис у Enrollments з mark = 70 
+    And final_score = 70%
+    And certificate_issued = true
+    And поточна дата не пізніша за Groups.end_date
     When викладач виправляє mark на 50
-    Then final_score обчислюється як 50%
-    And certificate_issued встановлюється в false
+    Then система зберігає mark = 50
+    And система обчислює final_score = 50%
+    And система встановлює certificate_issued = false
 
-  Scenario: Бали поза допустимим діапазоном
+  Scenario Outline: Відхилення бала поза допустимим діапазоном
     Given студент має запис у Enrollments з mark = 95
-    When викладач змінює mark на 101
+    And final_score = 95%
+    And поточна дата не пізніша за Groups.end_date
+    When викладач змінює mark на <new_mark>
     Then система відхиляє значення з кодом "MARK_OUT_OF_RANGE"
     And mark залишається 95
+    And final_score залишається 95%
+    
+    Examples:
+      | new_mark |
+      | -1       |
+      | 101      |
 
-  Scenario: Заборона редагування після завершення групи
-    Given Groups.end_date вже минула
+  Scenario: Заборона редагування бала після завершення групи
+    Given поточна дата пізніша за Groups.end_date
     And студент має запис у Enrollments з mark = 70
     When викладач намагається змінити mark на 80
     Then система відхиляє зміну
     And mark залишається 70
     And final_score залишається 70%
-
-  Scenario: Створення групи з некоректними датами
-    Given адміністратор створює нову групу для курсу
-    When він вказує Groups.start_date пізніше за Groups.end_date
-    Then система відхиляє створення групи
-
-  Scenario: Фільтрація курсів за категорією
-    Given курс A належить до категорій "ML" і "Python"
-    And курс B належить лише до категорії "SQL"
-    And студент обирає категорію "ML"
-    When студент переглядає список курсів
-    Then система показує курс A
-    And система не показує курс B
-
-  Scenario: Сповіщення про початок групи
-    Given студент має запис у Enrollments для групи з Groups.start_date сьогодні
-    And інший студент не має запису для цієї групи
-    When поточна дата досягає Groups.start_date
-    Then студент із записом отримує email-сповіщення про початок групи протягом 10 хвилин
-    But студент без запису в цій групі сповіщення не отримує
-
-  Scenario: Сповіщення про завершення групи
-    Given студент має запис у Enrollments для групи з Groups.end_date сьогодні
-    When поточна дата досягає Groups.end_date
-    Then студент отримує email-сповіщення про завершення групи протягом 10 хвилин
