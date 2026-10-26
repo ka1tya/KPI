@@ -46,11 +46,13 @@ Feature: Виставлення та виправлення балів студ�
   Scenario Outline: Відхилення бала поза допустимим діапазоном
     Given студент має запис у Enrollments з mark = 95
     And final_score = 95%
+    And certificate_issued = true
     And поточна дата не пізніша за Groups.end_date
     When викладач змінює mark на <new_mark>
     Then система відхиляє значення з кодом "MARK_OUT_OF_RANGE"
     And mark залишається 95
     And final_score залишається 95%
+    And certificate_issued залишається true
     
     Examples:
       | new_mark |
@@ -64,3 +66,17 @@ Feature: Виставлення та виправлення балів студ�
     Then система відхиляє зміну
     And mark залишається 70
     And final_score залишається 70%
+
+  Scenario: Перегляд запису з виставленою оцінкою
+    Given у записі Enrollments mark = 70
+    And final_score = 70%
+    And certificate_issued = true
+    When викладач відкриває запис Enrollments цього студента
+    Then система відображає mark = 70
+    And система відображає final_score = 70%
+    And система відображає certificate_issued = true
+
+  Scenario: Перегляд запису без виставленої оцінки
+    Given у записі Enrollments mark = NULL
+    When викладач відкриває запис Enrollments цього студента
+    Then система показує повідомлення "Оцінку ще не виставлено"
