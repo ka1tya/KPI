@@ -1,241 +1,288 @@
 @startuml S1
  title S1 - Успішне виставлення бала вище порогу сертифіката
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "GradeController" as Controller
+ boundary "GradeController" as Controller
  control "GradeService" as GradeService
- database "EnrollmentRepository" as EnrollmentRepo
- database "GroupRepository" as GroupRepo
- participant "Clock" as Clock
- Teacher -> View ++: enterMark(studentId, groupId, 75)
- View -> Controller ++: submitMark(studentId, groupId, 75)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(mark=NULL)
- Controller -> GroupRepo ++: findEndDate(groupId)
- GroupRepo --> Controller --: endDate
- Controller -> Clock ++: today()
- Clock --> Controller --: currentDate
- Controller -> GradeService ++: validateAndCalculate(75, currentDate, endDate)
- alt mark in range and group not ended
-   GradeService -> GradeService: calculateFinalScore(75)\ncalculateCertificateStatus(75)
-   GradeService --> Controller: gradeResult(75, 75, true)
-   Controller -> EnrollmentRepo: updateGrade(studentId, groupId, 75, 75, true)
-   EnrollmentRepo --> Controller: saved
-  Controller -> View: setOutcome(markSaved, 75, 75, true)
- else invalid mark or group ended
-   GradeService --> Controller: reject(reason)
-  Controller -> View: setOutcome(error, reason)
+ database "Enrollments" as Enrollments
+ database "Groups" as Groups
+
+ ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+
+ Teacher -> Controller : submitMark(student_id, group_id, 75)
+ activate Controller
+ Controller -> GradeService : updateMark(student_id, group_id, 75)
+ activate GradeService
+
+ GradeService -> GradeService : isMarkInRange(75) = true
+ GradeService -> Groups : findById(group_id)
+ activate Groups
+ Groups --> GradeService : group(end_date)
+ deactivate Groups
+ GradeService -> GradeService : isGroupEnded(end_date) = false
+ GradeService -> Enrollments : findByKey(student_id, group_id)
+ activate Enrollments
+ Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
+ deactivate Enrollments
+
+ GradeService -> GradeService: final_score = calculateFinalScore(75%)
+ alt final_score >= 60%
+   GradeService -> GradeService : setCertificateIssued(true)
+ else final_score < 60%
+   GradeService -> GradeService : setCertificateIssued(false)
  end
- GradeService --> Controller --: processingComplete
- Controller --> View --: responseReady
- View --> Teacher --: displayOutcome
+ note right of GradeService : 75% >= 60%: гілка certificate_issued = true
+
+ GradeService -> Enrollments : updateGrade(student_id, group_id, 75, final_score, certificate_issued)
+ activate Enrollments
+ Enrollments --> GradeService : saved
+ deactivate Enrollments
+
+ GradeService --> Controller : gradeResult(mark = 75, final_score, certificate_issued)
+ deactivate GradeService
+ Controller --> Teacher : відобразити збережені mark, final_score, certificate_issued
+ deactivate Controller
 @enduml
 
 @startuml S2
  title S2 - Виставлення бала на порозі сертифіката
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "GradeController" as Controller
+ boundary "GradeController" as Controller
  control "GradeService" as GradeService
- database "EnrollmentRepository" as EnrollmentRepo
- database "GroupRepository" as GroupRepo
- participant "Clock" as Clock
- Teacher -> View ++: enterMark(studentId, groupId, 60)
- View -> Controller ++: submitMark(studentId, groupId, 60)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(mark=NULL)
- Controller -> GroupRepo ++: findEndDate(groupId)
- GroupRepo --> Controller --: endDate
- Controller -> Clock ++: today()
- Clock --> Controller --: currentDate
- Controller -> GradeService ++: validateAndCalculate(60, currentDate, endDate)
- alt mark in range and group not ended
-   GradeService -> GradeService: calculateFinalScore(60)\ncalculateCertificateStatus(60 >= 60)
-   GradeService --> Controller: gradeResult(60, 60, true)
-   Controller -> EnrollmentRepo: updateGrade(studentId, groupId, 60, 60, true)
-   EnrollmentRepo --> Controller: saved
-  Controller -> View: setOutcome(markSaved, 60, 60, true)
- else invalid mark or group ended
-   GradeService --> Controller: reject(reason)
-  Controller -> View: setOutcome(error, reason)
+ database "Enrollments" as Enrollments
+ database "Groups" as Groups
+
+ ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+
+ Teacher -> Controller : submitMark(student_id, group_id, 60)
+ activate Controller
+ Controller -> GradeService : updateMark(student_id, group_id, 60)
+ activate GradeService
+
+ GradeService -> GradeService : isMarkInRange(60) = true
+ GradeService -> Groups : findById(group_id)
+ activate Groups
+ Groups --> GradeService : group(end_date)
+ deactivate Groups
+ GradeService -> GradeService : isGroupEnded(end_date) = false
+ GradeService -> Enrollments : findByKey(student_id, group_id)
+ activate Enrollments
+ Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
+ deactivate Enrollments
+
+ GradeService -> GradeService: final_score = calculateFinalScore(60%)
+ alt final_score >= 60%
+   GradeService -> GradeService : setCertificateIssued(true)
+ else final_score < 60%
+   GradeService -> GradeService : setCertificateIssued(false)
  end
- GradeService --> Controller --: processingComplete
- Controller --> View --: responseReady
- View --> Teacher --: displayOutcome
+ note right of GradeService : 60% >= 60%: гілка certificate_issued = true
+
+ GradeService -> Enrollments : updateGrade(student_id, group_id, 60, final_score, certificate_issued)
+ activate Enrollments
+ Enrollments --> GradeService : saved
+ deactivate Enrollments
+
+ GradeService --> Controller : gradeResult(mark = 60, final_score, certificate_issued)
+ deactivate GradeService
+ Controller --> Teacher : відобразити збережені mark, final_score, certificate_issued
+ deactivate Controller
 @enduml
 
 @startuml S3
  title S3 - Виставлення бала нижче порогу сертифіката
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "GradeController" as Controller
+ boundary "GradeController" as Controller
  control "GradeService" as GradeService
- database "EnrollmentRepository" as EnrollmentRepo
- database "GroupRepository" as GroupRepo
- participant "Clock" as Clock
- Teacher -> View ++: enterMark(studentId, groupId, 45)
- View -> Controller ++: submitMark(studentId, groupId, 45)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(mark=NULL)
- Controller -> GroupRepo ++: findEndDate(groupId)
- GroupRepo --> Controller --: endDate
- Controller -> Clock ++: today()
- Clock --> Controller --: currentDate
- Controller -> GradeService ++: validateAndCalculate(45, currentDate, endDate)
- alt mark in range and group not ended
-   GradeService -> GradeService: calculateFinalScore(45)\ncalculateCertificateStatus(45 < 60)
-   GradeService --> Controller: gradeResult(45, 45, false)
-   Controller -> EnrollmentRepo: updateGrade(studentId, groupId, 45, 45, false)
-   EnrollmentRepo --> Controller: saved
-  Controller -> View: setOutcome(markSaved, 45, 45, false)
- else invalid mark or group ended
-   GradeService --> Controller: reject(reason)
-  Controller -> View: setOutcome(error, reason)
+ database "Enrollments" as Enrollments
+ database "Groups" as Groups
+ 
+ ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+
+ Teacher -> Controller : submitMark(student_id, group_id, 45)
+ activate Controller
+ Controller -> GradeService : updateMark(student_id, group_id, 45)
+ activate GradeService
+
+ GradeService -> GradeService : isMarkInRange(45) = true
+ GradeService -> Groups : findById(group_id)
+ activate Groups
+ Groups --> GradeService : group(end_date)
+ deactivate Groups
+ GradeService -> GradeService : isGroupEnded(end_date) = false
+ GradeService -> Enrollments : findByKey(student_id, group_id)
+ activate Enrollments
+ Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
+ deactivate Enrollments
+
+ GradeService -> GradeService: final_score = calculateFinalScore(45%)
+ alt final_score >= 60%
+   GradeService -> GradeService : setCertificateIssued(true)
+ else final_score < 60%
+   GradeService -> GradeService : setCertificateIssued(false)
  end
- GradeService --> Controller --: processingComplete
- Controller --> View --: responseReady
- View --> Teacher --: displayOutcome
+ note right of GradeService : 45% < 60%: гілка certificate_issued = false
+
+ GradeService -> Enrollments : updateGrade(student_id, group_id, 45, final_score, certificate_issued)
+ activate Enrollments
+ Enrollments --> GradeService : saved
+ deactivate Enrollments
+
+ GradeService --> Controller : gradeResult(mark = 45, final_score, certificate_issued)
+ deactivate GradeService
+ Controller --> Teacher : відобразити збережені mark, final_score, certificate_issued
+ deactivate Controller
 @enduml
 
 @startuml S4
  title S4 - Виправлення бала змінює статус сертифіката
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "GradeController" as Controller
+ boundary "GradeController" as Controller
  control "GradeService" as GradeService
- database "EnrollmentRepository" as EnrollmentRepo
- database "GroupRepository" as GroupRepo
- participant "Clock" as Clock
- Teacher -> View ++: enterCorrectedMark(studentId, groupId, 50)
- View -> Controller ++: submitMark(studentId, groupId, 50)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(70, 70, true)
- Controller -> GroupRepo ++: findEndDate(groupId)
- GroupRepo --> Controller --: endDate
- Controller -> Clock ++: today()
- Clock --> Controller --: currentDate
- Controller -> GradeService ++: validateAndCalculate(50, currentDate, endDate)
- alt mark in range and group not ended
-   GradeService -> GradeService: calculateFinalScore(50)\ncalculateCertificateStatus(50 < 60)
-   GradeService --> Controller: gradeResult(50, 50, false)
-   Controller -> EnrollmentRepo: updateGrade(studentId, groupId, 50, 50, false)
-   EnrollmentRepo --> Controller: saved
-  Controller -> View: setOutcome(markSaved, 50, 50, false)
- else invalid mark or group ended
-   GradeService --> Controller: reject(reason)
-  Controller -> View: setOutcome(error, reason)
+ database "Enrollments" as Enrollments
+ database "Groups" as Groups
+ 
+ ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+
+ Teacher -> Controller : submitMark(student_id, group_id, 50)
+ activate Controller
+ Controller -> GradeService : updateMark(student_id, group_id, 50)
+ activate GradeService
+
+ GradeService -> GradeService : isMarkInRange(50) = true
+ GradeService -> Groups : findById(group_id)
+ activate Groups
+ Groups --> GradeService : group(end_date)
+ deactivate Groups
+ GradeService -> GradeService : isGroupEnded(end_date) = false
+ GradeService -> Enrollments : findByKey(student_id, group_id)
+ activate Enrollments
+ Enrollments --> GradeService : enrollment(mark = 70, final_score = 70%, certificate_issued = true)
+ deactivate Enrollments
+
+ GradeService -> GradeService: final_score = calculateFinalScore(50%)
+ alt final_score >= 60%
+   GradeService -> GradeService : setCertificateIssued(true)
+ else final_score < 60%
+   GradeService -> GradeService : setCertificateIssued(false)
  end
- GradeService --> Controller --: processingComplete
- Controller --> View --: responseReady
- View --> Teacher --: displayOutcome
+ note right of GradeService : 50% < 60%: гілка certificate_issued = false
+
+ GradeService -> Enrollments : updateGrade(student_id, group_id, 50, final_score, certificate_issued)
+ activate Enrollments
+ Enrollments --> GradeService : saved
+ deactivate Enrollments
+
+ GradeService --> Controller : gradeResult(mark = 50, final_score, certificate_issued)
+ deactivate GradeService
+ Controller --> Teacher : відобразити збережені mark, final_score, certificate_issued
+ deactivate Controller
 @enduml
 
 @startuml S5
  title S5 - Відхилення бала поза допустимим діапазоном
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "GradeController" as Controller
+ boundary "GradeController" as Controller
  control "GradeService" as GradeService
- database "EnrollmentRepository" as EnrollmentRepo
- database "GroupRepository" as GroupRepo
- participant "Clock" as Clock
- Teacher -> View ++: enterMark(studentId, groupId, newMark)
- View -> Controller ++: submitMark(studentId, groupId, newMark)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(95, 95, true)
- Controller -> GroupRepo ++: findEndDate(groupId)
- GroupRepo --> Controller --: endDate
- Controller -> Clock ++: today()
- Clock --> Controller --: currentDate
- Controller -> GradeService ++: validateAndCalculate(newMark, currentDate, endDate)
- alt newMark < 0 or newMark > 100
-   GradeService --> Controller: reject(MARK_OUT_OF_RANGE)
-  Controller -> View: setOutcome(error, MARK_OUT_OF_RANGE, unchanged(95, 95, true))
- else newMark in range and group not ended
-   GradeService -> GradeService: calculateFinalScore(newMark)\ncalculateCertificateStatus(newMark)
-   GradeService --> Controller: gradeResult(newMark, finalScore, certificateIssued)
-   Controller -> EnrollmentRepo: updateGrade(studentId, groupId, newMark, finalScore, certificateIssued)
-   EnrollmentRepo --> Controller: saved
-  Controller -> View: setOutcome(markSaved, newMark, finalScore, certificateIssued)
- else group ended
-   GradeService --> Controller: reject(GROUP_ENDED)
-  Controller -> View: setOutcome(error, GROUP_ENDED, unchanged(95, 95, true))
+ database "Enrollments" as Enrollments
+ 
+ ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+
+ Teacher -> Controller : submitMark(student_id, group_id, new_mark)
+ note right : new_mark = -1 або 101 (Scenario Outline)
+ activate Controller
+ Controller -> GradeService : updateMark(student_id, group_id, new_mark)
+ activate GradeService
+
+ GradeService -> GradeService : isMarkInRange(new_mark)
+ alt new_mark < 0 або new_mark > 100
+   GradeService --> Controller : error(MARK_OUT_OF_RANGE)
+   note right of GradeService : updateGrade не викликається:\nmark = 95 і final_score = 95% лишаються без змін
+ else new_mark у межах 0..100
+   ref over GradeService, Enrollments : перевірка групи, обчислення final_score і збереження (S1-S4)
+   GradeService --> Controller : gradeResult(new_mark, final_score, certificate_issued)
  end
- GradeService --> Controller --: processingComplete
- Controller --> View --: responseReady
- View --> Teacher --: displayOutcome
+ deactivate GradeService
+ Controller --> Teacher : відобразити помилку "MARK_OUT_OF_RANGE" або збережені значення
+ deactivate Controller
 @enduml
 
 @startuml S6
  title S6 - Заборона редагування бала після завершення групи
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "GradeController" as Controller
+ boundary "GradeController" as Controller
  control "GradeService" as GradeService
- database "EnrollmentRepository" as EnrollmentRepo
- database "GroupRepository" as GroupRepo
- participant "Clock" as Clock
- Teacher -> View ++: enterMark(studentId, groupId, 80)
- View -> Controller ++: submitMark(studentId, groupId, 80)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(70, 70, certificateIssued)
- Controller -> GroupRepo ++: findEndDate(groupId)
- GroupRepo --> Controller --: endDate
- Controller -> Clock ++: today()
- Clock --> Controller --: currentDate
- Controller -> GradeService ++: validateAndCalculate(80, currentDate, endDate)
- alt currentDate > endDate
-   GradeService --> Controller: reject(GROUP_ENDED)
-  Controller -> View: setOutcome(error, GROUP_ENDED, unchanged(70, 70))
- else currentDate <= endDate and mark in range
-   GradeService -> GradeService: calculateFinalScore(80)\ncalculateCertificateStatus(80)
-   GradeService --> Controller: gradeResult(80, 80, certificateIssued)
-   Controller -> EnrollmentRepo: updateGrade(studentId, groupId, 80, 80, certificateIssued)
-   EnrollmentRepo --> Controller: saved
-  Controller -> View: setOutcome(markSaved, 80, 80, certificateIssued)
- else mark out of range
-   GradeService --> Controller: reject(MARK_OUT_OF_RANGE)
-  Controller -> View: setOutcome(error, MARK_OUT_OF_RANGE, unchanged(70, 70))
+ database "Enrollments" as Enrollments
+ database "Groups" as Groups
+ 
+ ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+
+ Teacher -> Controller : submitMark(student_id, group_id, 80)
+ activate Controller
+ Controller -> GradeService : updateMark(student_id, group_id, 80)
+ activate GradeService
+
+ GradeService -> GradeService : isMarkInRange(80) = true
+ GradeService -> Groups : findById(group_id)
+ activate Groups
+ Groups --> GradeService : group(end_date)
+ deactivate Groups
+ GradeService -> GradeService : isGroupEnded(end_date) = true
+ alt поточна дата пізніша за end_date (Groups.end_date)
+   GradeService --> Controller : error("група завершена")
+   note right of GradeService : updateGrade не викликається:\nmark = 70 і final_score = 70% лишаються без змін
+ else група ще не завершена
+   ref over GradeService, Enrollments : обчислення final_score і збереження (S1-S4)
+   GradeService --> Controller : gradeResult(80, final_score, certificate_issued)
  end
- GradeService --> Controller --: processingComplete
- Controller --> View --: responseReady
- View --> Teacher --: displayOutcome
+ deactivate GradeService
+ Controller --> Teacher : відобразити відхилення зміни або збережені значення
+ deactivate Controller
 @enduml
 
 @startuml S7
  title S7 - Перегляд запису з виставленою оцінкою
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "EnrollmentController" as Controller
- database "EnrollmentRepository" as EnrollmentRepo
- Teacher -> View ++: openEnrollment(studentId, groupId)
- View -> Controller ++: getEnrollment(studentId, groupId)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(mark=70, finalScore=70, certificateIssued=true)
- alt enrollment found and mark is set
-  Controller -> View: setViewState(enrollmentDetails(70, 70, true))
- else enrollment found and mark is NULL
-  Controller -> View: setViewState(enrollmentNotGraded)
+ boundary "GradeController" as Controller
+ database "Enrollments" as Enrollments
+
+ Teacher -> Controller : openEnrollment(student_id, group_id)
+ activate Controller
+ Controller -> Enrollments : findByKey(student_id, group_id)
+ activate Enrollments
+ Enrollments --> Controller : enrollment(mark=70, final_score=70%, certificate_issued=true)
+ deactivate Enrollments
+ alt mark != NULL 
+   Controller --> Teacher : показати mark, final_score і certificate_issued
+ else mark = NULL
+   Controller --> Teacher : показати повідомлення "Оцінку ще не виставлено"
  end
- Controller --> View --: responseReady
- View --> Teacher --: displayEnrollment
+ deactivate Controller
 @enduml
 
 @startuml S8
  title S8 - Перегляд запису без виставленої оцінки
+
  actor "Викладач" as Teacher
- boundary "EnrollmentView" as View
- control "EnrollmentController" as Controller
- database "EnrollmentRepository" as EnrollmentRepo
- Teacher -> View ++: openEnrollment(studentId, groupId)
- View -> Controller ++: getEnrollment(studentId, groupId)
- Controller -> EnrollmentRepo ++: findByKey(studentId, groupId)
- EnrollmentRepo --> Controller --: enrollment(mark=NULL)
- alt enrollment found and mark is NULL
-  Controller -> View: setViewState(enrollmentNotGraded)
- else enrollment found and mark is set
-  Controller -> View: setViewState(enrollmentDetails(mark, finalScore, certificateIssued))
+ boundary "GradeController" as Controller
+ database "Enrollments" as Enrollments
+
+ Teacher -> Controller : openEnrollment(student_id, group_id)
+ activate Controller
+ Controller -> Enrollments : findByKey(student_id, group_id)
+ activate Enrollments
+ Enrollments --> Controller : enrollment(mark=NULL)
+ deactivate Enrollments
+ alt mark != NULL
+   Controller --> Teacher : показати mark, final_score і certificate_issued
+ else mark = NULL
+   Controller --> Teacher : показати повідомлення "Оцінку ще не виставлено"
  end
- Controller --> View --: responseReady
- View --> Teacher --: displayEnrollment
+ deactivate Controller
 @enduml
