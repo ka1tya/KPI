@@ -258,10 +258,8 @@
  activate Enrollments
  Enrollments --> Controller : enrollment(mark=70, final_score=70%, certificate_issued=true)
  deactivate Enrollments
- alt mark != NULL 
+ opt mark != NULL 
    Controller --> Teacher : показати mark, final_score і certificate_issued
- else mark = NULL
-   Controller --> Teacher : показати повідомлення "Оцінку ще не виставлено"
  end
  deactivate Controller
 @enduml
@@ -279,9 +277,7 @@
  activate Enrollments
  Enrollments --> Controller : enrollment(mark=NULL)
  deactivate Enrollments
- alt mark != NULL
-   Controller --> Teacher : показати mark, final_score і certificate_issued
- else mark = NULL
+ opt mark = NULL
    Controller --> Teacher : показати повідомлення "Оцінку ще не виставлено"
  end
  deactivate Controller
