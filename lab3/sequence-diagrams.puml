@@ -25,7 +25,7 @@
  Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(75%)
+ GradeService -> GradeService: final_score = calculateFinalScore(75)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -71,7 +71,7 @@
  Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(60%)
+ GradeService -> GradeService: final_score = calculateFinalScore(60)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -117,7 +117,7 @@
  Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(45%)
+ GradeService -> GradeService: final_score = calculateFinalScore(45)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -163,7 +163,7 @@
  Enrollments --> GradeService : enrollment(mark = 70, final_score = 70%, certificate_issued = true)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(50%)
+ GradeService -> GradeService: final_score = calculateFinalScore(50)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -201,7 +201,7 @@
  GradeService -> GradeService : isMarkInRange(new_mark)
  alt new_mark < 0 або new_mark > 100
    GradeService --> Controller : error(MARK_OUT_OF_RANGE)
-   note right of GradeService : updateGrade не викликається:\nmark = 95 і final_score = 95% лишаються без змін
+   note right of GradeService : updateGrade не викликається:\nmark = 95 і final_score = 95% і certificate_issued = true лишаються без змін
  else new_mark у межах 0..100
    ref over GradeService, Enrollments : перевірка групи, обчислення final_score і збереження (S1-S4)
    GradeService --> Controller : gradeResult(new_mark, final_score, certificate_issued)
