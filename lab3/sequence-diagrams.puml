@@ -7,7 +7,7 @@
  database "Enrollments" as Enrollments
  database "Groups" as Groups
 
- ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+ ref over Teacher, Enrollments : UC-6 Переглянути поточні результати студента
 
  Teacher -> Controller : submitMark(student_id, group_id, 75)
  activate Controller
@@ -25,7 +25,7 @@
  Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(75%)
+ GradeService -> GradeService: final_score = calculateFinalScore(75)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -45,7 +45,7 @@
 @enduml
 
 @startuml S2
- title S2 - Виставлення бала на порозі сертифіката
+ title S2 - Виставлення бала рівно на порозі сертифіката
 
  actor "Викладач" as Teacher
  boundary "GradeController" as Controller
@@ -53,7 +53,7 @@
  database "Enrollments" as Enrollments
  database "Groups" as Groups
 
- ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+ ref over Teacher, Enrollments : UC-6 Переглянути поточні результати студента
 
  Teacher -> Controller : submitMark(student_id, group_id, 60)
  activate Controller
@@ -71,7 +71,7 @@
  Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(60%)
+ GradeService -> GradeService: final_score = calculateFinalScore(60)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -99,7 +99,7 @@
  database "Enrollments" as Enrollments
  database "Groups" as Groups
  
- ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+ ref over Teacher, Enrollments : UC-6 Переглянути поточні результати студента
 
  Teacher -> Controller : submitMark(student_id, group_id, 45)
  activate Controller
@@ -117,7 +117,7 @@
  Enrollments --> GradeService : enrollment(mark = NULL, certificate_issued = false)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(45%)
+ GradeService -> GradeService: final_score = calculateFinalScore(45)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -145,7 +145,7 @@
  database "Enrollments" as Enrollments
  database "Groups" as Groups
  
- ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+ ref over Teacher, Enrollments : UC-6 Переглянути поточні результати студента
 
  Teacher -> Controller : submitMark(student_id, group_id, 50)
  activate Controller
@@ -163,7 +163,7 @@
  Enrollments --> GradeService : enrollment(mark = 70, final_score = 70%, certificate_issued = true)
  deactivate Enrollments
 
- GradeService -> GradeService: final_score = calculateFinalScore(50%)
+ GradeService -> GradeService: final_score = calculateFinalScore(50)
  alt final_score >= 60%
    GradeService -> GradeService : setCertificateIssued(true)
  else final_score < 60%
@@ -189,8 +189,9 @@
  boundary "GradeController" as Controller
  control "GradeService" as GradeService
  database "Enrollments" as Enrollments
+ database "Groups" as Groups
  
- ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+ ref over Teacher, Enrollments : UC-6 Переглянути поточні результати студента
 
  Teacher -> Controller : submitMark(student_id, group_id, new_mark)
  note right : new_mark = -1 або 101 (Scenario Outline)
@@ -201,9 +202,9 @@
  GradeService -> GradeService : isMarkInRange(new_mark)
  alt new_mark < 0 або new_mark > 100
    GradeService --> Controller : error(MARK_OUT_OF_RANGE)
-   note right of GradeService : updateGrade не викликається:\nmark = 95 і final_score = 95% лишаються без змін
+   note right of GradeService : updateGrade не викликається:\nmark = 95 і final_score = 95% і certificate_issued = true лишаються без змін
  else new_mark у межах 0..100
-   ref over GradeService, Enrollments : перевірка групи, обчислення final_score і збереження (S1-S4)
+   ref over GradeService, Enrollments, Groups : перевірка групи, обчислення final_score і збереження
    GradeService --> Controller : gradeResult(new_mark, final_score, certificate_issued)
  end
  deactivate GradeService
@@ -220,7 +221,7 @@
  database "Enrollments" as Enrollments
  database "Groups" as Groups
  
- ref over Teacher, Controller : Background: UC-6, перегляд поточних результатів (S7 / S8)
+ ref over Teacher, Enrollments : UC-6 Переглянути поточні результати студента
 
  Teacher -> Controller : submitMark(student_id, group_id, 80)
  activate Controller
@@ -232,16 +233,16 @@
  activate Groups
  Groups --> GradeService : group(end_date)
  deactivate Groups
- GradeService -> GradeService : isGroupEnded(end_date) = true
+ GradeService -> GradeService : isGroupEnded(end_date)
  alt поточна дата пізніша за end_date (Groups.end_date)
-   GradeService --> Controller : error("група завершена")
+   GradeService --> Controller : error(GROUP_ENDED)
    note right of GradeService : updateGrade не викликається:\nmark = 70 і final_score = 70% лишаються без змін
  else група ще не завершена
-   ref over GradeService, Enrollments : обчислення final_score і збереження (S1-S4)
+   ref over GradeService, Enrollments : обчислення final_score і збереження
    GradeService --> Controller : gradeResult(80, final_score, certificate_issued)
  end
  deactivate GradeService
- Controller --> Teacher : відобразити відхилення зміни або збережені значення
+ Controller --> Teacher : відобразити помилку "GROUP_ENDED" або збережені значення
  deactivate Controller
 @enduml
 
