@@ -22,7 +22,7 @@
       <bpmn:messageEventDefinition id="MED_Throw_submit" messageRef="Message_submitMark" />
     </bpmn:intermediateThrowEvent>
     <bpmn:eventBasedGateway id="EBG" name="Що настане першим?" />
-    <bpmn:intermediateCatchEvent id="Catch_Timer" name="Таймер очікування">
+    <bpmn:intermediateCatchEvent id="Catch_Timer" name="30 с без відповіді">
       <bpmn:timerEventDefinition id="TED_1">
         <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT30S</bpmn:timeDuration>
       </bpmn:timerEventDefinition>
@@ -34,7 +34,7 @@
       <bpmn:messageEventDefinition id="MED_Catch_Error" messageRef="Message_error" />
     </bpmn:intermediateCatchEvent>
     <bpmn:endEvent id="End_Timeout" name="Відповіді немає (таймаут)" />
-    <bpmn:task id="Task_Show" name="Переглянути збережені mark, final_score, certificate_issued" />
+    <bpmn:userTask id="Task_Show" name="Переглянути збережені mark, final_score, certificate_issued" />
     <bpmn:endEvent id="End_Ok" name="Бал збережено" />
     <bpmn:endEvent id="End_ErrShown" name="Помилку показано" />
 
@@ -58,17 +58,17 @@
     <bpmn:task id="Task_Range" name="Перевірити діапазон оцінки (isMarkInRange)" />
     <bpmn:exclusiveGateway id="XOR_Range" name="Бал у межах 0..100?" default="f4" />
     <bpmn:parallelGateway id="ParSplit" name="Читати паралельно" />
-    <bpmn:task id="Task_FindGroup" name="Знайти групу (findById)" />
+    <bpmn:serviceTask id="Task_FindGroup" name="Знайти групу (findById)" />
     <bpmn:task id="Task_CheckEnded" name="Визначити, чи група завершена (isGroupEnded)" />
-    <bpmn:task id="Task_FindEnrollment" name="Знайти запис у Enrollments (findByKey)" />
+    <bpmn:serviceTask id="Task_FindEnrollment" name="Знайти запис у Enrollments (findByKey)" />
     <bpmn:parallelGateway id="ParJoin" name="Обидва читання завершено" />
     <bpmn:exclusiveGateway id="XOR_Ended" name="Група завершена?" default="f11" />
     <bpmn:task id="Task_Calc" name="Обчислити final_score (calculateFinalScore)" />
-    <bpmn:exclusiveGateway id="XOR_Cert" name="final_score ≥ 60?" default="f15" />
-    <bpmn:task id="Task_CertTrue" name="certificate_issued = true" />
-    <bpmn:task id="Task_CertFalse" name="certificate_issued = false" />
+    <bpmn:exclusiveGateway id="XOR_Cert" name="final_score ≥ 60%?" default="f15" />
+    <bpmn:task id="Task_CertTrue" name="Встановити certificate_issued = true" />
+    <bpmn:task id="Task_CertFalse" name="Встановити certificate_issued = false" />
     <bpmn:exclusiveGateway id="XOR_CertMerge" />
-    <bpmn:task id="Task_Save" name="Зберегти результат (updateGrade)" />
+    <bpmn:serviceTask id="Task_Save" name="Зберегти результат (updateGrade)" />
     <bpmn:endEvent id="End_Result" name="Надіслати gradeResult">
       <bpmn:messageEventDefinition id="MED_End_Result" messageRef="Message_gradeResult" />
     </bpmn:endEvent>
