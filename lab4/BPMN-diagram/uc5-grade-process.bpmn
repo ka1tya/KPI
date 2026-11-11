@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_UC5" targetNamespace="http://example.com/bpmn/uc5">
+
+  <bpmn:message id="Message_submitMark" name="submitMark(student_id, group_id, mark)" />
+  <bpmn:message id="Message_gradeResult" name="gradeResult(mark, final_score, certificate_issued)" />
+  <bpmn:message id="Message_error" name="error(code)" />
+
+  <bpmn:collaboration id="Collaboration_UC5">
+    <bpmn:participant id="Participant_Teacher" name="Викладач" processRef="Process_Teacher" />
+    <bpmn:participant id="Participant_System" name="Система" processRef="Process_System" />
+    <bpmn:messageFlow id="m1" name="submitMark" sourceRef="Throw_submit" targetRef="Start_S" />
+    <bpmn:messageFlow id="m2" name="gradeResult" sourceRef="End_Result" targetRef="Catch_Result" />
+    <bpmn:messageFlow id="m3" name="error(MARK_OUT_OF_RANGE)" sourceRef="End_Error_Range" targetRef="Catch_Error" />
+    <bpmn:messageFlow id="m4" name="error(GROUP_ENDED)" sourceRef="End_Error_Group" targetRef="Catch_Error" />
+  </bpmn:collaboration>
+
+  <!-- ===================== ВИКЛАДАЧ ===================== -->
+  <bpmn:process id="Process_Teacher" isExecutable="false">
+    <bpmn:startEvent id="Start_T" name="Потрібно виставити або виправити бал" />
+    <bpmn:userTask id="Task_Enter" name="Ввести бал студенту" />
+    <bpmn:intermediateThrowEvent id="Throw_submit" name="Надіслати submitMark">
+      <bpmn:messageEventDefinition id="MED_Throw_submit" messageRef="Message_submitMark" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:eventBasedGateway id="EBG" name="Що настане першим?" />
+    <bpmn:intermediateCatchEvent id="Catch_Timer" name="Таймер очікування">
+      <bpmn:timerEventDefinition id="TED_1">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT30S</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="Catch_Result" name="Отримано gradeResult">
+      <bpmn:messageEventDefinition id="MED_Catch_Result" messageRef="Message_gradeResult" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="Catch_Error" name="Отримано error(code)">
+      <bpmn:messageEventDefinition id="MED_Catch_Error" messageRef="Message_error" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="End_Timeout" name="Відповіді немає (таймаут)" />
+    <bpmn:task id="Task_Show" name="Переглянути збережені mark, final_score, certificate_issued" />
+    <bpmn:endEvent id="End_Ok" name="Бал збережено" />
+    <bpmn:endEvent id="End_ErrShown" name="Помилку показано" />
+
+    <bpmn:sequenceFlow id="t1" sourceRef="Start_T" targetRef="Task_Enter" />
+    <bpmn:sequenceFlow id="t2" sourceRef="Task_Enter" targetRef="Throw_submit" />
+    <bpmn:sequenceFlow id="t3" sourceRef="Throw_submit" targetRef="EBG" />
+    <bpmn:sequenceFlow id="t4" sourceRef="EBG" targetRef="Catch_Timer" />
+    <bpmn:sequenceFlow id="t5" sourceRef="EBG" targetRef="Catch_Result" />
+    <bpmn:sequenceFlow id="t6" sourceRef="EBG" targetRef="Catch_Error" />
+    <bpmn:sequenceFlow id="t7" sourceRef="Catch_Timer" targetRef="End_Timeout" />
+    <bpmn:sequenceFlow id="t8" sourceRef="Catch_Result" targetRef="Task_Show" />
+    <bpmn:sequenceFlow id="t9" sourceRef="Task_Show" targetRef="End_Ok" />
+    <bpmn:sequenceFlow id="t10" sourceRef="Catch_Error" targetRef="End_ErrShown" />
+  </bpmn:process>
+
+  <!-- ===================== СИСТЕМА ===================== -->
+  <bpmn:process id="Process_System" isExecutable="false">
+    <bpmn:startEvent id="Start_S" name="Отримано submitMark">
+      <bpmn:messageEventDefinition id="MED_Start_S" messageRef="Message_submitMark" />
+    </bpmn:startEvent>
+    <bpmn:task id="Task_Range" name="Перевірити діапазон оцінки (isMarkInRange)" />
+    <bpmn:exclusiveGateway id="XOR_Range" name="Бал у межах 0..100?" default="f4" />
+    <bpmn:parallelGateway id="ParSplit" name="Читати паралельно" />
+    <bpmn:task id="Task_FindGroup" name="Знайти групу (findById)" />
+    <bpmn:task id="Task_CheckEnded" name="Визначити, чи група завершена (isGroupEnded)" />
+    <bpmn:task id="Task_FindEnrollment" name="Знайти запис у Enrollments (findByKey)" />
+    <bpmn:parallelGateway id="ParJoin" name="Обидва читання завершено" />
+    <bpmn:exclusiveGateway id="XOR_Ended" name="Група завершена?" default="f11" />
+    <bpmn:task id="Task_Calc" name="Обчислити final_score (calculateFinalScore)" />
+    <bpmn:exclusiveGateway id="XOR_Cert" name="final_score ≥ 60?" default="f15" />
+    <bpmn:task id="Task_CertTrue" name="certificate_issued = true" />
+    <bpmn:task id="Task_CertFalse" name="certificate_issued = false" />
+    <bpmn:exclusiveGateway id="XOR_CertMerge" />
+    <bpmn:task id="Task_Save" name="Зберегти результат (updateGrade)" />
+    <bpmn:endEvent id="End_Result" name="Надіслати gradeResult">
+      <bpmn:messageEventDefinition id="MED_End_Result" messageRef="Message_gradeResult" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Error_Range" name="Надіслати error(MARK_OUT_OF_RANGE)">
+      <bpmn:messageEventDefinition id="MED_End_Error_Range" messageRef="Message_error" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Error_Group" name="Надіслати error(GROUP_ENDED)">
+      <bpmn:messageEventDefinition id="MED_End_Error_Group" messageRef="Message_error" />
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="f1" sourceRef="Start_S" targetRef="Task_Range" />
+    <bpmn:sequenceFlow id="f2" sourceRef="Task_Range" targetRef="XOR_Range" />
+    <bpmn:sequenceFlow id="f3" name="так" sourceRef="XOR_Range" targetRef="ParSplit">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${mark &gt;= 0 &amp;&amp; mark &lt;= 100}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f4" name="ні" sourceRef="XOR_Range" targetRef="End_Error_Range" />
+    <bpmn:sequenceFlow id="f5" sourceRef="ParSplit" targetRef="Task_FindGroup" />
+    <bpmn:sequenceFlow id="f6" sourceRef="ParSplit" targetRef="Task_FindEnrollment" />
+    <bpmn:sequenceFlow id="f7" sourceRef="Task_FindGroup" targetRef="Task_CheckEnded" />
+    <bpmn:sequenceFlow id="f8" sourceRef="Task_CheckEnded" targetRef="ParJoin" />
+    <bpmn:sequenceFlow id="f9" sourceRef="Task_FindEnrollment" targetRef="ParJoin" />
+    <bpmn:sequenceFlow id="f10" sourceRef="ParJoin" targetRef="XOR_Ended" />
+    <bpmn:sequenceFlow id="f11" name="ні" sourceRef="XOR_Ended" targetRef="Task_Calc" />
+    <bpmn:sequenceFlow id="f12" name="так" sourceRef="XOR_Ended" targetRef="End_Error_Group">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${groupEnded}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f13" sourceRef="Task_Calc" targetRef="XOR_Cert" />
+    <bpmn:sequenceFlow id="f14" name="так" sourceRef="XOR_Cert" targetRef="Task_CertTrue">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${final_score &gt;= 60}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f15" name="ні" sourceRef="XOR_Cert" targetRef="Task_CertFalse" />
+    <bpmn:sequenceFlow id="f16" sourceRef="Task_CertTrue" targetRef="XOR_CertMerge" />
+    <bpmn:sequenceFlow id="f17" sourceRef="Task_CertFalse" targetRef="XOR_CertMerge" />
+    <bpmn:sequenceFlow id="f18" sourceRef="XOR_CertMerge" targetRef="Task_Save" />
+    <bpmn:sequenceFlow id="f19" sourceRef="Task_Save" targetRef="End_Result" />
+  </bpmn:process>
+
+  <!-- ===================== ДІАГРАМА ===================== -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_UC5">
+    <bpmndi:BPMNPlane id="BPMNPlane_UC5" bpmnElement="Collaboration_UC5">
+      <bpmndi:BPMNShape id="Participant_Teacher_di" bpmnElement="Participant_Teacher" isHorizontal="true"><dc:Bounds x="160" y="40" width="2000" height="300" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_System_di" bpmnElement="Participant_System" isHorizontal="true"><dc:Bounds x="160" y="400" width="2000" height="360" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_T_di" bpmnElement="Start_T"><dc:Bounds x="212" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Enter_di" bpmnElement="Task_Enter"><dc:Bounds x="290" y="140" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Throw_submit_di" bpmnElement="Throw_submit"><dc:Bounds x="440" y="162" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="390" y="118" width="80" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EBG_di" bpmnElement="EBG"><dc:Bounds x="540" y="155" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="480" y="112" width="70" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Catch_Timer_di" bpmnElement="Catch_Timer"><dc:Bounds x="662" y="82" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Catch_Result_di" bpmnElement="Catch_Result"><dc:Bounds x="662" y="162" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="688" y="200" width="80" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Catch_Error_di" bpmnElement="Catch_Error"><dc:Bounds x="802" y="262" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="760" y="228" width="120" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Timeout_di" bpmnElement="End_Timeout"><dc:Bounds x="762" y="82" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="806" y="86" width="150" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Show_di" bpmnElement="Task_Show"><dc:Bounds x="770" y="140" width="170" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Ok_di" bpmnElement="End_Ok"><dc:Bounds x="1000" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ErrShown_di" bpmnElement="End_ErrShown"><dc:Bounds x="900" y="262" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_S_di" bpmnElement="Start_S"><dc:Bounds x="212" y="582" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Range_di" bpmnElement="Task_Range"><dc:Bounds x="290" y="560" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="XOR_Range_di" bpmnElement="XOR_Range" isMarkerVisible="true"><dc:Bounds x="490" y="575" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ParSplit_di" bpmnElement="ParSplit"><dc:Bounds x="620" y="575" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="655" y="630" width="80" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FindGroup_di" bpmnElement="Task_FindGroup"><dc:Bounds x="730" y="480" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckEnded_di" bpmnElement="Task_CheckEnded"><dc:Bounds x="920" y="480" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FindEnrollment_di" bpmnElement="Task_FindEnrollment"><dc:Bounds x="825" y="640" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ParJoin_di" bpmnElement="ParJoin"><dc:Bounds x="1120" y="575" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1040" y="630" width="100" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="XOR_Ended_di" bpmnElement="XOR_Ended" isMarkerVisible="true"><dc:Bounds x="1230" y="575" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Calc_di" bpmnElement="Task_Calc"><dc:Bounds x="1330" y="560" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="XOR_Cert_di" bpmnElement="XOR_Cert" isMarkerVisible="true"><dc:Bounds x="1530" y="575" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1475" y="630" width="75" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CertTrue_di" bpmnElement="Task_CertTrue"><dc:Bounds x="1620" y="480" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CertFalse_di" bpmnElement="Task_CertFalse"><dc:Bounds x="1620" y="640" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="XOR_CertMerge_di" bpmnElement="XOR_CertMerge" isMarkerVisible="true"><dc:Bounds x="1820" y="575" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Save_di" bpmnElement="Task_Save"><dc:Bounds x="1900" y="560" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Result_di" bpmnElement="End_Result"><dc:Bounds x="2100" y="582" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Error_Range_di" bpmnElement="End_Error_Range"><dc:Bounds x="497" y="442" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="540" y="448" width="230" height="24" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Error_Group_di" bpmnElement="End_Error_Group"><dc:Bounds x="1237" y="442" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1280" y="448" width="200" height="24" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="t1_di" bpmnElement="t1"><di:waypoint x="248" y="180" /><di:waypoint x="290" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t2_di" bpmnElement="t2"><di:waypoint x="390" y="180" /><di:waypoint x="440" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t3_di" bpmnElement="t3"><di:waypoint x="476" y="180" /><di:waypoint x="540" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t4_di" bpmnElement="t4"><di:waypoint x="565" y="155" /><di:waypoint x="565" y="100" /><di:waypoint x="662" y="100" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t5_di" bpmnElement="t5"><di:waypoint x="590" y="180" /><di:waypoint x="662" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t6_di" bpmnElement="t6"><di:waypoint x="565" y="205" /><di:waypoint x="565" y="280" /><di:waypoint x="802" y="280" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t7_di" bpmnElement="t7"><di:waypoint x="698" y="100" /><di:waypoint x="762" y="100" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t8_di" bpmnElement="t8"><di:waypoint x="698" y="180" /><di:waypoint x="770" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t9_di" bpmnElement="t9"><di:waypoint x="940" y="180" /><di:waypoint x="1000" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="t10_di" bpmnElement="t10"><di:waypoint x="838" y="280" /><di:waypoint x="900" y="280" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f1_di" bpmnElement="f1"><di:waypoint x="248" y="600" /><di:waypoint x="290" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f2_di" bpmnElement="f2"><di:waypoint x="430" y="600" /><di:waypoint x="490" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f3_di" bpmnElement="f3"><di:waypoint x="540" y="600" /><di:waypoint x="620" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f4_di" bpmnElement="f4"><di:waypoint x="515" y="575" /><di:waypoint x="515" y="478" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f5_di" bpmnElement="f5"><di:waypoint x="645" y="575" /><di:waypoint x="645" y="520" /><di:waypoint x="730" y="520" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f6_di" bpmnElement="f6"><di:waypoint x="645" y="625" /><di:waypoint x="645" y="680" /><di:waypoint x="825" y="680" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f7_di" bpmnElement="f7"><di:waypoint x="870" y="520" /><di:waypoint x="920" y="520" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f8_di" bpmnElement="f8"><di:waypoint x="1060" y="520" /><di:waypoint x="1145" y="520" /><di:waypoint x="1145" y="575" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f9_di" bpmnElement="f9"><di:waypoint x="965" y="680" /><di:waypoint x="1145" y="680" /><di:waypoint x="1145" y="625" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f10_di" bpmnElement="f10"><di:waypoint x="1170" y="600" /><di:waypoint x="1230" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f11_di" bpmnElement="f11"><di:waypoint x="1280" y="600" /><di:waypoint x="1330" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f12_di" bpmnElement="f12"><di:waypoint x="1255" y="575" /><di:waypoint x="1255" y="478" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f13_di" bpmnElement="f13"><di:waypoint x="1470" y="600" /><di:waypoint x="1530" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f14_di" bpmnElement="f14"><di:waypoint x="1555" y="575" /><di:waypoint x="1555" y="520" /><di:waypoint x="1620" y="520" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f15_di" bpmnElement="f15"><di:waypoint x="1555" y="625" /><di:waypoint x="1555" y="680" /><di:waypoint x="1620" y="680" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f16_di" bpmnElement="f16"><di:waypoint x="1760" y="520" /><di:waypoint x="1845" y="520" /><di:waypoint x="1845" y="575" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f17_di" bpmnElement="f17"><di:waypoint x="1760" y="680" /><di:waypoint x="1845" y="680" /><di:waypoint x="1845" y="625" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f18_di" bpmnElement="f18"><di:waypoint x="1870" y="600" /><di:waypoint x="1900" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f19_di" bpmnElement="f19"><di:waypoint x="2040" y="600" /><di:waypoint x="2100" y="600" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="m1_di" bpmnElement="m1"><di:waypoint x="458" y="198" /><di:waypoint x="458" y="360" /><di:waypoint x="230" y="360" /><di:waypoint x="230" y="582" /><bpmndi:BPMNLabel><dc:Bounds x="463" y="300" width="70" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="m2_di" bpmnElement="m2"><di:waypoint x="2118" y="582" /><di:waypoint x="2118" y="370" /><di:waypoint x="680" y="370" /><di:waypoint x="680" y="198" /><bpmndi:BPMNLabel><dc:Bounds x="2050" y="450" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="m3_di" bpmnElement="m3"><di:waypoint x="515" y="442" /><di:waypoint x="515" y="380" /><di:waypoint x="812" y="380" /><di:waypoint x="812" y="298" /><bpmndi:BPMNLabel><dc:Bounds x="310" y="410" width="200" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="m4_di" bpmnElement="m4"><di:waypoint x="1255" y="442" /><di:waypoint x="1255" y="350" /><di:waypoint x="828" y="350" /><di:waypoint x="828" y="298" /><bpmndi:BPMNLabel><dc:Bounds x="1262" y="405" width="120" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
