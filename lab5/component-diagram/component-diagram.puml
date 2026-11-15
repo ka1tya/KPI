@@ -1,0 +1,88 @@
+@startuml
+skinparam componentStyle uml2
+skinparam shadowing false
+
+actor "Викладач" as Teacher
+actor "Адміністратор" as Admin
+
+rectangle "Course Platform (межа системи)" {
+
+  package "Presentation" {
+    component [Web UI\n(браузерний клієнт)] as UI
+  }
+
+  package "API" {
+    component [GradeController] as GC
+    component [AuthGuard] as AG
+    component [RequestQueue] as RQ
+  }
+
+  package "Business" {
+    component [GradeService] as GS
+  }
+
+  package "Data Access" {
+    component [EnrollmentsRepository] as ER
+    component [GroupsRepository] as GR
+    component [CoursesRepository] as CR
+  }
+
+  database "Relational DB\n(Courses, Students, Teachers,\nEnrollments, Categories, Groups)" as DB
+}
+
+cloud "Identity Provider\n(зовнішня система)" as IdP
+
+' --- provided-інтерфейси ---
+interface "IGradeApi\nsubmitMark, openEnrollment" as IGradeApi
+interface "IAccessControl\nauthorize" as IAccess
+interface "IRequestQueue\nenqueue" as IQueue
+interface "IGradeService\nsubmitMark" as IGradeSvc
+interface "IEnrollmentsRepo\nfindByKey, updateGrade" as IEnrRepo
+interface "IGroupsRepo\nfindById" as IGrpRepo
+interface "ICoursesRepo\nfindTeacherIdByGroupId" as ICrsRepo
+interface "SQL" as ISql
+interface "IIdentity\nvalidateToken" as IIdent
+
+GC -- IGradeApi
+AG -- IAccess
+RQ -- IQueue
+GS -- IGradeSvc
+ER -- IEnrRepo
+GR -- IGrpRepo
+CR -- ICrsRepo
+DB -- ISql
+IdP -- IIdent
+
+' --- required-інтерфейси (залежності) ---
+Teacher --> UI
+Admin --> UI
+UI ..> IGradeApi : HTTPS
+GC ..> IAccess : кожен запит
+GC ..> IQueue : submitMark (UC-5)
+GC ..> IEnrRepo : openEnrollment (UC-6)
+RQ ..> IGradeSvc
+GS ..> IEnrRepo
+GS ..> IGrpRepo
+AG ..> IIdent
+AG ..> ICrsRepo
+ER ..> ISql
+GR ..> ISql
+CR ..> ISql
+
+note right of UI
+  NFR-001: Chrome ≥130, Firefox ≥132, 360–3840 px
+  NFR-005: тексти помилок українською за кодом
+  Таймер 30 с (PT30S) на очікуванні відповіді (lab4)
+end note
+
+note bottom of RQ
+  NFR-002: понад 30 одночасних запитів → черга,
+  очікування до 30 с, далі відхилення
+  з повідомленням про перевищення часу
+end note
+
+note bottom of GS
+  isMarkInRange, isGroupEnded, calculateFinalScore,
+  certificate_issued (REQ-004, 008, 012, 013, 014)
+end note
+@enduml
