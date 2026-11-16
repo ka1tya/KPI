@@ -101,6 +101,14 @@ note bottom of GS
   асинхронно і не впливає на gradeResult (NFR-003)
 end note
 
+note bottom of GSch
+  Не має provided-інтерфейсу: запускається
+  за розкладом щодня на початку доби,
+  а не іншим компонентом
+  (REQ-015, REQ-016: сповіщення протягом 10 хв
+  після настання start_date / end_date)
+end note
+
 note bottom of AG
   NFR-004: викладач змінює оцінки лише своїх курсів
   (Courses.teacher_id), адміністратор лише переглядає
