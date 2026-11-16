@@ -20,6 +20,7 @@ rectangle "Course Platform (межа системи)" {
   package "Business" {
     component [GradeService] as GS
     component [NotificationService] as NS
+    component [GroupScheduler] as GSch
   }
 
   package "Data Access" {
@@ -39,9 +40,9 @@ interface "IGradeApi\nsubmitMark, openEnrollment" as IGradeApi
 interface "IAccessControl\nauthorize" as IAccess
 interface "IRequestQueue\nenqueue" as IQueue
 interface "IGradeService\nsubmitMark" as IGradeSvc
-interface "INotification\nnotifyCertificate" as INotify
-interface "IEnrollmentsRepo\nfindByKey, updateGrade" as IEnrRepo
-interface "IGroupsRepo\nfindById" as IGrpRepo
+interface "INotification\nnotifyGroupStart(group_id, student_ids),\nnotifyGroupEnd(group_id, student_ids),\nnotifyCertificate" as INotify
+interface "IEnrollmentsRepo\nfindByKey, findByGroupId,\nupdateGrade" as IEnrRepo
+interface "IGroupsRepo\nfindById, findByDate" as IGrpRepo
 interface "ICoursesRepo\nfindTeacherIdByGroupId" as ICrsRepo
 interface "SQL" as ISql
 interface "IIdentity\nvalidateToken, getProfile" as IIdent
@@ -70,6 +71,9 @@ RQ ..> IGradeSvc
 GS ..> IEnrRepo
 GS ..> IGrpRepo
 GS ..> INotify : сертифікат
+GSch ..> IGrpRepo : групи, що починаються\nабо завершуються сьогодні
+GSch ..> IEnrRepo : студенти групи
+GSch ..> INotify : початок і завершення групи
 AG ..> IIdent
 AG ..> ICrsRepo
 NS ..> IIdent : email отримувача
