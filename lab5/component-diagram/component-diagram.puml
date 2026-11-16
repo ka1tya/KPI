@@ -37,10 +37,10 @@ cloud "Email Service\n(зовнішня система)" as Email
 
 ' --- provided-інтерфейси ---
 interface "IGradeApi\nsubmitMark, openEnrollment" as IGradeApi
-interface "IAccessControl\nauthorize" as IAccess
+interface "IAccessControl\nauthorize(user, action, group_id)" as IAccess
 interface "IRequestQueue\nenqueue" as IQueue
 interface "IGradeService\nsubmitMark" as IGradeSvc
-interface "INotification\nnotifyGroupStart(group_id, student_ids),\nnotifyGroupEnd(group_id, student_ids),\nnotifyCertificate" as INotify
+interface "INotification\nnotifyGroupStart(group_id, student_ids),\nnotifyGroupEnd(group_id, student_ids),\nnotifyCertificate(student_id, group_id)" as INotify
 interface "IEnrollmentsRepo\nfindByKey, findByGroupId,\nupdateGrade" as IEnrRepo
 interface "IGroupsRepo\nfindById, findByDate" as IGrpRepo
 interface "ICoursesRepo\nfindTeacherIdByGroupId" as ICrsRepo
@@ -70,7 +70,7 @@ GC ..> IEnrRepo : openEnrollment (UC-6)
 RQ ..> IGradeSvc
 GS ..> IEnrRepo
 GS ..> IGrpRepo
-GS ..> INotify : сертифікат
+GS ..> INotify : сертифікат (асинхронно)
 GSch ..> IGrpRepo : групи, що починаються\nабо завершуються сьогодні
 GSch ..> IEnrRepo : студенти групи
 GSch ..> INotify : початок і завершення групи
@@ -97,6 +97,13 @@ end note
 note bottom of GS
   isMarkInRange, isGroupEnded, calculateFinalScore,
   certificate_issued (REQ-004, 008, 012, 013, 014)
+  notifyCertificate викликається після updateGrade
+  асинхронно і не впливає на gradeResult (NFR-003)
+end note
+
+note bottom of AG
+  NFR-004: викладач змінює оцінки лише своїх курсів
+  (Courses.teacher_id), адміністратор лише переглядає
 end note
 
 note bottom of NS
