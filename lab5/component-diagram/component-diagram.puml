@@ -1,6 +1,9 @@
 @startuml
 skinparam componentStyle uml2
 skinparam shadowing false
+top to bottom direction
+skinparam nodesep 25
+skinparam ranksep 40
 
 actor "Студент" as Student
 actor "Викладач" as Teacher
@@ -13,68 +16,67 @@ rectangle "Course Platform (межа системи)" {
   }
 
   package "API" {
+    interface "ICourseApi\nlistCourses, filterByCategory" as ICourseApi
+    interface "IGroupApi\ncreateGroup, enrollStudents" as IGroupApi
+    interface "IGradeApi\nsubmitMark, openEnrollment" as IGradeApi
     component [CourseController] as CC
     component [GroupController] as GrC
     component [GradeController] as GC
+    interface "IAccessControl\nauthorize(user, action, group_id)" as IAccess
+    interface "IRequestQueue\nenqueue" as IQueue
     component [AuthGuard] as AG
     component [RequestQueue] as RQ
   }
 
   package "Business" {
+    interface "ICourseService\nfindCourses" as ICourseSvc
+    interface "IGroupService\ncreateGroup, enrollStudents" as IGroupSvc
+    interface "IGradeService\nupdateMark" as IGradeSvc
     component [CourseService] as CS
     component [GroupService] as GrS
     component [GradeService] as GS
-    component [NotificationService] as NS
     component [GroupScheduler] as GSch
+    interface "INotification\nnotifyGroupStart(group_id, student_ids),\nnotifyGroupEnd(group_id, student_ids),\nnotifyCertificate(student_id, group_id)" as INotify
+    component [NotificationService] as NS
   }
 
   package "Data Access" {
-    component [EnrollmentsRepository] as ER
-    component [GroupsRepository] as GR
+    interface "ICoursesRepo\nfindAll, findByCategory,\nfindTeacherIdByGroupId" as ICrsRepo
+    interface "IGroupsRepo\nfindById, findStartingOn(date),\nfindEndingOn(date), create" as IGrpRepo
+    interface "IEnrollmentsRepo\nfindByKey, findByGroupId,\nupdateGrade, create" as IEnrRepo
+    interface "IStudentsRepo\nfindByIds" as IStdRepo
     component [CoursesRepository] as CR
+    component [GroupsRepository] as GR
+    component [EnrollmentsRepository] as ER
     component [StudentsRepository] as SR
   }
 
+  interface "SQL" as ISql
   database "Relational DB\n(Courses, Students, Teachers,\nEnrollments, Categories, Groups)" as DB
 }
 
+interface "IIdentity\nvalidateToken, getProfile" as IIdent
+interface "IEmail\nsendEmail" as IEmail
 cloud "Identity Provider\n(зовнішня система)" as IdP
 cloud "Email Service\n(зовнішня система)" as Email
 
 ' --- provided-інтерфейси ---
-interface "ICourseApi\nlistCourses, filterByCategory" as ICourseApi
-interface "IGroupApi\ncreateGroup, enrollStudents" as IGroupApi
-interface "IGradeApi\nsubmitMark, openEnrollment" as IGradeApi
-interface "IAccessControl\nauthorize(user, action, group_id)" as IAccess
-interface "IRequestQueue\nenqueue" as IQueue
-interface "ICourseService\nfindCourses" as ICourseSvc
-interface "IGroupService\ncreateGroup, enrollStudents" as IGroupSvc
-interface "IGradeService\nupdateMark" as IGradeSvc
-interface "INotification\nnotifyGroupStart(group_id, student_ids),\nnotifyGroupEnd(group_id, student_ids),\nnotifyCertificate(student_id, group_id)" as INotify
-interface "IEnrollmentsRepo\nfindByKey, findByGroupId,\nupdateGrade, create" as IEnrRepo
-interface "IGroupsRepo\nfindById, findStartingOn(date),\nfindEndingOn(date), create" as IGrpRepo
-interface "ICoursesRepo\nfindAll, findByCategory,\nfindTeacherIdByGroupId" as ICrsRepo
-interface "IStudentsRepo\nfindByIds" as IStdRepo
-interface "SQL" as ISql
-interface "IIdentity\nvalidateToken, getProfile" as IIdent
-interface "IEmail\nsendEmail" as IEmail
-
-CC -- ICourseApi
-GrC -- IGroupApi
-GC -- IGradeApi
-AG -- IAccess
-RQ -- IQueue
-CS -- ICourseSvc
-GrS -- IGroupSvc
-GS -- IGradeSvc
-NS -- INotify
-ER -- IEnrRepo
-GR -- IGrpRepo
-CR -- ICrsRepo
-SR -- IStdRepo
-DB -- ISql
-IdP -- IIdent
-Email -- IEmail
+ICourseApi -- CC
+IGroupApi -- GrC
+IGradeApi -- GC
+IAccess -- AG
+IQueue -- RQ
+ICourseSvc -- CS
+IGroupSvc -- GrS
+IGradeSvc -- GS
+INotify -- NS
+IEnrRepo -- ER
+IGrpRepo -- GR
+ICrsRepo -- CR
+IStdRepo -- SR
+ISql -- DB
+IIdent -- IdP
+IEmail -- Email
 
 ' --- required-інтерфейси (залежності) ---
 Student --> UI
@@ -97,7 +99,7 @@ GrS ..> IStdRepo
 GS ..> IEnrRepo
 GS ..> IGrpRepo
 GS ..> INotify : сертифікат (асинхронно, REQ-005)
-GSch ..> IGrpRepo : групи, що починаються\nабо завершуються сьогодні
+GSch ..> IGrpRepo : групи за датою
 GSch ..> IEnrRepo : студенти групи
 GSch ..> INotify : початок і завершення групи
 AG ..> IIdent
@@ -115,13 +117,13 @@ note right of UI
   Таймер 30 с (PT30S) на очікуванні відповіді (lab4)
 end note
 
-note bottom of RQ
+note right of RQ
   NFR-002: понад 30 одночасних запитів → черга,
   очікування до 30 с, далі відхилення
   з повідомленням про перевищення часу
 end note
 
-note bottom of GS
+note left of GS
   isMarkInRange, isGroupEnded, calculateFinalScore,
   certificate_issued (REQ-004, 008, 012, 013, 014)
   notifyCertificate викликається після updateGrade
@@ -129,7 +131,7 @@ note bottom of GS
   сповіщення протягом 10 хв (REQ-005)
 end note
 
-note bottom of GSch
+note right of GSch
   Не має provided-інтерфейсу: запускається
   за розкладом щодня на початку доби,
   а не іншим компонентом
@@ -137,12 +139,12 @@ note bottom of GSch
   після настання start_date / end_date)
 end note
 
-note bottom of AG
+note right of AG
   NFR-004: викладач змінює оцінки лише своїх курсів
   (Courses.teacher_id), адміністратор лише переглядає
 end note
 
-note bottom of NS
+note right of NS
   Email отримувача береться з профілю IdP,
   бо в lab1 Students не має email
 end note
