@@ -2,6 +2,7 @@
 skinparam componentStyle uml2
 skinparam shadowing false
 
+actor "Студент" as Student
 actor "Викладач" as Teacher
 actor "Адміністратор" as Admin
 
@@ -12,12 +13,16 @@ rectangle "Course Platform (межа системи)" {
   }
 
   package "API" {
+    component [CourseController] as CC
+    component [GroupController] as GrC
     component [GradeController] as GC
     component [AuthGuard] as AG
     component [RequestQueue] as RQ
   }
 
   package "Business" {
+    component [CourseService] as CS
+    component [GroupService] as GrS
     component [GradeService] as GS
     component [NotificationService] as NS
     component [GroupScheduler] as GSch
@@ -27,6 +32,7 @@ rectangle "Course Platform (межа системи)" {
     component [EnrollmentsRepository] as ER
     component [GroupsRepository] as GR
     component [CoursesRepository] as CR
+    component [StudentsRepository] as SR
   }
 
   database "Relational DB\n(Courses, Students, Teachers,\nEnrollments, Categories, Groups)" as DB
@@ -36,38 +42,58 @@ cloud "Identity Provider\n(зовнішня система)" as IdP
 cloud "Email Service\n(зовнішня система)" as Email
 
 ' --- provided-інтерфейси ---
+interface "ICourseApi\nlistCourses, filterByCategory" as ICourseApi
+interface "IGroupApi\ncreateGroup, enrollStudents" as IGroupApi
 interface "IGradeApi\nsubmitMark, openEnrollment" as IGradeApi
 interface "IAccessControl\nauthorize(user, action, group_id)" as IAccess
 interface "IRequestQueue\nenqueue" as IQueue
+interface "ICourseService\nfindCourses" as ICourseSvc
+interface "IGroupService\ncreateGroup, enrollStudents" as IGroupSvc
 interface "IGradeService\nsubmitMark" as IGradeSvc
 interface "INotification\nnotifyGroupStart(group_id, student_ids),\nnotifyGroupEnd(group_id, student_ids),\nnotifyCertificate(student_id, group_id)" as INotify
-interface "IEnrollmentsRepo\nfindByKey, findByGroupId,\nupdateGrade" as IEnrRepo
-interface "IGroupsRepo\nfindById, findByDate" as IGrpRepo
-interface "ICoursesRepo\nfindTeacherIdByGroupId" as ICrsRepo
+interface "IEnrollmentsRepo\nfindByKey, findByGroupId,\nupdateGrade, create" as IEnrRepo
+interface "IGroupsRepo\nfindById, findByDate, create" as IGrpRepo
+interface "ICoursesRepo\nfindAll, findByCategory,\nfindTeacherIdByGroupId" as ICrsRepo
+interface "IStudentsRepo\nfindByIds" as IStdRepo
 interface "SQL" as ISql
 interface "IIdentity\nvalidateToken, getProfile" as IIdent
 interface "IEmail\nsendEmail" as IEmail
 
+CC -- ICourseApi
+GrC -- IGroupApi
 GC -- IGradeApi
 AG -- IAccess
 RQ -- IQueue
+CS -- ICourseSvc
+GrS -- IGroupSvc
 GS -- IGradeSvc
 NS -- INotify
 ER -- IEnrRepo
 GR -- IGrpRepo
 CR -- ICrsRepo
+SR -- IStdRepo
 DB -- ISql
 IdP -- IIdent
 Email -- IEmail
 
 ' --- required-інтерфейси (залежності) ---
+Student --> UI
 Teacher --> UI
 Admin --> UI
-UI ..> IGradeApi : HTTPS
+UI ..> ICourseApi : HTTPS (UC-3, UC-4)
+UI ..> IGroupApi : HTTPS (UC-1, UC-9)
+UI ..> IGradeApi : HTTPS (UC-5, UC-6)
+CC ..> ICourseSvc
+GrC ..> IAccess
+GrC ..> IGroupSvc
 GC ..> IAccess : кожен запит
 GC ..> IQueue : submitMark (UC-5)
 GC ..> IEnrRepo : openEnrollment (UC-6)
 RQ ..> IGradeSvc
+CS ..> ICrsRepo
+GrS ..> IGrpRepo
+GrS ..> IEnrRepo
+GrS ..> IStdRepo
 GS ..> IEnrRepo
 GS ..> IGrpRepo
 GS ..> INotify : сертифікат (асинхронно)
@@ -81,6 +107,7 @@ NS ..> IEmail
 ER ..> ISql
 GR ..> ISql
 CR ..> ISql
+SR ..> ISql
 
 note right of UI
   NFR-001: Chrome ≥130, Firefox ≥132, 360–3840 px
