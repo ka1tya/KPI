@@ -49,10 +49,10 @@ interface "IAccessControl\nauthorize(user, action, group_id)" as IAccess
 interface "IRequestQueue\nenqueue" as IQueue
 interface "ICourseService\nfindCourses" as ICourseSvc
 interface "IGroupService\ncreateGroup, enrollStudents" as IGroupSvc
-interface "IGradeService\nsubmitMark" as IGradeSvc
+interface "IGradeService\nupdateMark" as IGradeSvc
 interface "INotification\nnotifyGroupStart(group_id, student_ids),\nnotifyGroupEnd(group_id, student_ids),\nnotifyCertificate(student_id, group_id)" as INotify
 interface "IEnrollmentsRepo\nfindByKey, findByGroupId,\nupdateGrade, create" as IEnrRepo
-interface "IGroupsRepo\nfindById, findByDate, create" as IGrpRepo
+interface "IGroupsRepo\nfindById, findStartingOn(date),\nfindEndingOn(date), create" as IGrpRepo
 interface "ICoursesRepo\nfindAll, findByCategory,\nfindTeacherIdByGroupId" as ICrsRepo
 interface "IStudentsRepo\nfindByIds" as IStdRepo
 interface "SQL" as ISql
@@ -96,7 +96,7 @@ GrS ..> IEnrRepo
 GrS ..> IStdRepo
 GS ..> IEnrRepo
 GS ..> IGrpRepo
-GS ..> INotify : сертифікат (асинхронно)
+GS ..> INotify : сертифікат (асинхронно, REQ-005)
 GSch ..> IGrpRepo : групи, що починаються\nабо завершуються сьогодні
 GSch ..> IEnrRepo : студенти групи
 GSch ..> INotify : початок і завершення групи
@@ -125,7 +125,8 @@ note bottom of GS
   isMarkInRange, isGroupEnded, calculateFinalScore,
   certificate_issued (REQ-004, 008, 012, 013, 014)
   notifyCertificate викликається після updateGrade
-  асинхронно і не впливає на gradeResult (NFR-003)
+  асинхронно і не впливає на gradeResult (NFR-003),
+  сповіщення протягом 10 хв (REQ-005)
 end note
 
 note bottom of GSch
